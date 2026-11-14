@@ -1,6 +1,7 @@
 export const WEBHOOK_PROVIDERS = [
   'applyfy',
   'hotmart',
+  'cakto',
   'mundpay',
   'wiven',
   'perfectpay',

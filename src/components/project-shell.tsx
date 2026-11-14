@@ -1,218 +1,230 @@
-'use client'
-
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+"use client";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
+  LogOut,
   BarChart3,
-  BadgeDollarSign,
-  Blocks,
-  ChartNoAxesCombined,
-  ChevronDown,
-  CircleDollarSign,
   LayoutDashboard,
-  Settings,
-  ShoppingCart,
+  ChartNoAxesCombined,
+  ShoppingBag,
   Waypoints,
-} from 'lucide-react'
-
-type ProjectShellProps = {
-  children: React.ReactNode
-  project: {
-    id: string
-    name: string
-  }
-}
-
+  Plug,
+  Wallet,
+  Settings,
+  Bell,
+  FileChartColumn,
+  Workflow,
+  Link2,
+  Radio,
+  Menu,
+  Sun,
+  Moon,
+  Eye,
+  EyeOff,
+  ArrowUpRight,
+} from "lucide-react";
+import { deferEffect } from "@/lib/defer-effect";
+import type { Project } from "@/lib/workspace/types";
+const sections = [
+  ["dashboard", "Resumo", LayoutDashboard],
+  ["utms", "UTMs", Link2],
+  ["integrations", "Integrações", Plug],
+  ["reports", "Relatórios", FileChartColumn],
+  ["rules", "Regras", Workflow],
+  ["events", "Eventos", Waypoints],
+  ["notifications", "Notificações", Bell],
+  ["campaigns", "Gestão de Tráfego", ChartNoAxesCombined],
+  ["sales", "Vendas", ShoppingBag],
+  ["finance", "Gestão Financeira", Wallet],
+  ["live", "Ao Vivo", Radio],
+  ["tracking", "Tracking Avançado", Waypoints],
+  ["settings", "Configurações", Settings],
+] as const;
 export default function ProjectShell({
   children,
   project,
-}: ProjectShellProps) {
-  const pathname = usePathname()
-
-  const navigation = [
-    {
-      label: 'Visão geral',
-      href: `/project/${project.id}/dashboard`,
-      icon: LayoutDashboard,
-    },
-    {
-      label: 'Campanhas',
-      href: `/project/${project.id}/campaigns`,
-      icon: ChartNoAxesCombined,
-    },
-    {
-      label: 'Vendas',
-      href: `/project/${project.id}/sales`,
-      icon: ShoppingCart,
-    },
-    {
-      label: 'Tracking',
-      href: `/project/${project.id}/tracking`,
-      icon: Waypoints,
-    },
-    {
-      label: 'Integrações',
-      href: `/project/${project.id}/integrations`,
-      icon: Blocks,
-    },
-    {
-      label: 'Financeiro',
-      href: `/project/${project.id}/finance`,
-      icon: CircleDollarSign,
-    },
-    {
-      label: 'Configurações',
-      href: `/project/${project.id}/settings`,
-      icon: Settings,
-    },
-  ]
-
+  projects,
+  preferences,
+}: {
+  children: React.ReactNode;
+  project: Project;
+  projects: Project[];
+  preferences: Record<string, unknown>;
+}) {
+  const pathname = usePathname(),
+    router = useRouter();
+  const [light, setLight] = useState(preferences.theme === "light"),
+    [privacy, setPrivacy] = useState(preferences.privacy === true),
+    [menu, setMenu] = useState(false),
+    [message, setMessage] = useState("");
+  useEffect(
+    () =>
+      deferEffect(() => {
+        setLight(
+          preferences.theme
+            ? preferences.theme === "light"
+            : localStorage.getItem("tf-theme") === "light",
+        );
+        setPrivacy(
+          typeof preferences.privacy === "boolean"
+            ? preferences.privacy
+            : localStorage.getItem("tf-privacy") === "true",
+        );
+      }),
+    [preferences.theme, preferences.privacy],
+  );
+  async function preference(key: string, value: unknown) {
+    if (key === "theme") {
+      setLight(value === "light");
+      localStorage.setItem("tf-theme", String(value));
+    } else {
+      setPrivacy(Boolean(value));
+      localStorage.setItem("tf-privacy", String(value));
+    }
+    try {
+      const response = await fetch("/api/workspace/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          action: "preferences",
+          input: { [key]: value },
+        }),
+      });
+      if (!response.ok) throw new Error();
+      setMessage("");
+    } catch {
+      setMessage(
+        "Preferência aplicada neste dispositivo. Não foi possível sincronizar com o servidor.",
+      );
+    }
+  }
   return (
-    <div className="min-h-screen bg-[#08090c] text-white">
-      {/* SIDEBAR */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] border-r border-white/[0.06] bg-[#0b0d10] lg:flex lg:flex-col">
-        {/* LOGO */}
-        <div className="flex h-20 items-center border-b border-white/[0.06] px-6">
-          <Link
-            href="/projects"
-            className="flex items-center gap-3"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-black">
-              <BarChart3 size={20} strokeWidth={2.5} />
-            </div>
-
-            <div>
-              <p className="text-[15px] font-semibold tracking-tight">
-                Traffic Flow
-              </p>
-
-              <p className="text-[11px] text-zinc-600">
-                Performance Intelligence
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* PROJETO */}
-        <div className="px-4 py-5">
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
-            Projeto
-          </p>
-
-          <Link
-            href="/projects"
-            className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 transition hover:bg-white/[0.05]"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-zinc-200">
-                {project.name}
-              </p>
-
-              <p className="mt-0.5 text-[11px] text-zinc-600">
-                Trocar projeto
-              </p>
-            </div>
-
-            <ChevronDown
-              size={15}
-              className="shrink-0 text-zinc-600"
-            />
-          </Link>
-        </div>
-
-        {/* MENU */}
-        <nav className="flex-1 px-4">
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
-            Workspace
-          </p>
-
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const Icon = item.icon
-
-              const active =
-                pathname === item.href ||
-                pathname.startsWith(`${item.href}/`)
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                    active
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'text-zinc-500 hover:bg-white/[0.035] hover:text-zinc-200'
-                  }`}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
-          </div>
+    <div
+      className={`tf-shell ${light ? "tf-light" : ""} ${privacy ? "tf-private" : ""} ${menu ? "tf-menu-open" : ""}`}
+    >
+      <aside className="tf-sidebar">
+        <Link className="tf-brand" href="/projects">
+          <span>
+            <BarChart3 />
+          </span>
+          Traffic<span className="tf-brand-accent">Flow</span>
+        </Link>
+        <label className="tf-eyebrow" htmlFor="tf-project">
+          DASHBOARD / OFERTA
+        </label>
+        <select
+          id="tf-project"
+          value={project.id}
+          onChange={(e) => {
+            setMenu(false);
+            router.push(
+              `/project/${e.target.value}/${pathname.split("/")[3] || "dashboard"}`,
+            );
+          }}
+        >
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <Link className="tf-portfolio-link" href="/projects">
+          Visão da operação <ArrowUpRight size={14} />
+        </Link>
+        <nav aria-label="Navegação da dashboard">
+          {sections.map(([route, label, Icon]) => (
+            <Link
+              key={route}
+              href={`/project/${project.id}/${route}`}
+              aria-current={pathname.endsWith("/" + route) ? "page" : undefined}
+              onClick={() => setMenu(false)}
+            >
+              <Icon size={19} />
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
-
-        {/* RODAPÉ SIDEBAR */}
-        <div className="border-t border-white/[0.06] p-4">
-          <div className="rounded-xl bg-white/[0.025] p-3">
-            <div className="flex items-center gap-2">
-              <BadgeDollarSign
-                size={16}
-                className="text-emerald-400"
-              />
-
-              <span className="text-xs font-medium text-zinc-300">
-                Traffic Flow
-              </span>
-            </div>
-
-            <p className="mt-2 text-[11px] leading-4 text-zinc-600">
-              Tracking, atribuição e performance em uma única plataforma.
-            </p>
-          </div>
+        <div className="tf-sidebar-bottom">
+          <span>Uma oferta. Toda a operação.</span>
+          <small>Traffic Flow</small>
         </div>
       </aside>
-
-      {/* CONTEÚDO */}
-      <div className="lg:pl-[260px]">
-        {/* TOPBAR */}
-        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-white/[0.06] bg-[#08090c]/90 px-6 backdrop-blur-xl md:px-8">
-          <div>
-            <p className="text-xs text-zinc-600">
-              Projeto atual
-            </p>
-
-            <p className="mt-1 text-sm font-medium text-zinc-200">
-              {project.name}
-            </p>
+      {menu && (
+        <button
+          className="tf-menu-backdrop"
+          aria-label="Fechar menu"
+          onClick={() => setMenu(false)}
+        />
+      )}
+      <div className="tf-body">
+        <header className="tf-topbar">
+          <div className="tf-topbar-left">
+            <button
+              className="tf-mobile-toggle"
+              aria-label="Abrir menu"
+              onClick={() => setMenu(!menu)}
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <small>Dashboard da oferta</small>
+              <strong>{project.name}</strong>
+            </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-xs text-zinc-500 sm:block">
-              Ambiente de produção
-            </div>
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-zinc-900 text-xs font-semibold text-zinc-300">
-              TF
-            </div>
+          <div className="tf-topbar-actions">
+            <span className="tf-timezone">
+              {project.base_currency} ·{" "}
+              {project.timezone.replace("America/", "")}
+            </span>
+            <button
+              title="Alternar tema"
+              aria-label="Alternar tema"
+              onClick={() => void preference("theme", light ? "dark" : "light")}
+            >
+              {light ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            <button
+              title="Ocultar valores"
+              aria-label="Ocultar valores"
+              onClick={() => void preference("privacy", !privacy)}
+            >
+              {privacy ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+            <Link
+              aria-label="Notificações"
+              href={`/project/${project.id}/notifications`}
+            >
+              <Bell size={18} />
+            </Link>
+            <button
+              aria-label="Sair da conta"
+              title="Sair da conta"
+              onClick={async () => {
+                const response = await fetch("/auth/signout", {
+                  method: "POST",
+                });
+                if (response.ok) {
+                  router.replace("/login");
+                  router.refresh();
+                } else setMessage("Não foi possível sair. Tente novamente.");
+              }}
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
-
-        <nav aria-label="Navegação do projeto" className="flex gap-2 overflow-x-auto border-b border-white/[0.06] px-4 py-3 lg:hidden">
-          <Link href="/projects" className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300">Projetos</Link>
-          {navigation.map(item => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-            return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-xs ${active ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-300'}`}>{item.label}</Link>
-          })}
-        </nav>
-
-        {/* PÁGINAS */}
-        <div className="min-h-[calc(100vh-80px)]">
-          {children}
-        </div>
+        {message && (
+          <p role="status" className="tf-banner">
+            {message}
+          </p>
+        )}
+        <div className="tf-page-body">{children}</div>
+        <footer className="tf-footer">
+          Traffic Flow <span>Tráfego · Vendas · Inteligência</span>
+        </footer>
       </div>
     </div>
-  )
+  );
 }

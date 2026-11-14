@@ -575,8 +575,8 @@ export async function GET(request: NextRequest) {
       )
 
     redirectUrl.searchParams.set(
-      'meta',
-      'authorized'
+      'tab',
+      'Anúncios'
     )
 
     const response =

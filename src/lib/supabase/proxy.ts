@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/auth') &&
     !request.nextUrl.pathname.startsWith('/api/health')
   ) {
+    if (request.nextUrl.pathname.startsWith('/api/')) return NextResponse.json({ok:false,error:'Faça login novamente.'},{status:401})
     const url = request.nextUrl.clone()
     url.pathname = '/login'
 

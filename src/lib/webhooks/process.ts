@@ -1,3 +1,5 @@
+import {canApplyOrderStatus} from './order-transition'
+import { normalizeProviderOrder } from './provider-orders'
 import {
   createAdminClient,
 } from '@/lib/supabase/admin'
@@ -12,7 +14,6 @@ import {
 
 import {
   normalizeApplyfyDispute,
-  normalizeApplyfyOrder,
 } from './applyfy'
 
 import type {
@@ -78,7 +79,7 @@ export async function processWebhookEvent({
      */
 
     if (
-      provider !== 'applyfy'
+      !['applyfy','hotmart','cakto'].includes(provider)
     ) {
       await admin
         .from(
@@ -119,9 +120,7 @@ export async function processWebhookEvent({
      */
 
     const normalizedOrder =
-      normalizeApplyfyOrder(
-        payload
-      )
+      normalizeProviderOrder(provider, payload)
 
 
     if (normalizedOrder) {
@@ -162,6 +161,13 @@ export async function processWebhookEvent({
        * o token transportado para
        * diagnóstico/reprocessamento.
        */
+      const {data:existingOrder,error:existingError}=await admin.from('orders').select('id,status').eq('integration_id',integrationId).eq('external_order_id',normalizedOrder.externalOrderId).maybeSingle()
+      if(existingError)throw new Error(existingError.message)
+      if(existingOrder&&!canApplyOrderStatus(existingOrder.status,normalizedOrder.status)){
+        await admin.from('webhook_events').update({status:'ignored',processed_at:new Date().toISOString()}).eq('id',webhookEventId)
+        return {processed:false,orderId:existingOrder.id}
+      }
+
       const transportedToken =
         getTransportedAttributionToken(
           normalizedOrder
