@@ -1,0 +1,1261 @@
+<!doctype html>
+
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>
+      Traffic Flow — E2E Diagnostic
+    </title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #090a0d;
+        color: #f4f4f5;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+
+      main {
+        width: min(
+          920px,
+          calc(100% - 32px)
+        );
+
+        margin: 50px auto;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .muted {
+        color: #71717a;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      .card {
+        margin-top: 24px;
+        border: 1px solid
+          rgba(
+            255,
+            255,
+            255,
+            0.07
+          );
+
+        border-radius: 16px;
+        background: #0d0f13;
+        padding: 22px;
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 12px 0;
+
+        border-bottom:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            0.05
+          );
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .label {
+        color: #71717a;
+        font-size: 12px;
+      }
+
+      .value {
+        max-width: 65%;
+        color: #d4d4d8;
+        font-size: 12px;
+        text-align: right;
+        word-break: break-all;
+      }
+
+      .check {
+        color: #34d399;
+      }
+
+      .fail {
+        color: #f87171;
+      }
+
+      .pending {
+        color: #fbbf24;
+      }
+
+      input {
+        width: 100%;
+        margin-top: 12px;
+        padding: 13px 14px;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            0.08
+          );
+
+        border-radius: 12px;
+        outline: none;
+
+        background:
+          rgba(
+            0,
+            0,
+            0,
+            0.25
+          );
+
+        color: #d4d4d8;
+        font-size: 12px;
+      }
+
+      input:focus {
+        border-color:
+          rgba(
+            52,
+            211,
+            153,
+            0.35
+          );
+      }
+
+      button {
+        margin-top: 14px;
+        border: 0;
+        border-radius: 12px;
+
+        padding: 11px 15px;
+
+        background: #fafafa;
+        color: #09090b;
+
+        font-size: 12px;
+        font-weight: 600;
+
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .secondary {
+        margin-left: 8px;
+
+        border:
+          1px solid
+          rgba(
+            255,
+            255,
+            255,
+            0.08
+          );
+
+        background:
+          transparent;
+
+        color: #a1a1aa;
+      }
+
+      code {
+        font-family:
+          ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+
+      .notice {
+        margin-top: 16px;
+        padding: 14px;
+
+        border:
+          1px solid
+          rgba(
+            251,
+            191,
+            36,
+            0.15
+          );
+
+        border-radius: 12px;
+
+        background:
+          rgba(
+            251,
+            191,
+            36,
+            0.03
+          );
+
+        color: #a1a1aa;
+        font-size: 11px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+
+
+  <body>
+    <main>
+
+      <p class="muted">
+        Traffic Flow
+      </p>
+
+      <h1>
+        Teste controlado E2E
+      </h1>
+
+      <p class="muted">
+        Laboratório isolado para validar a cadeia de atribuição sem instalar o Traffic Flow na PV real.
+      </p>
+
+
+      <!-- ===============================================
+           ETAPA A
+      ================================================ -->
+
+      <div
+        class="card"
+        id="trackingCard"
+      >
+        <h2>
+          18.9A — Tracking e Meta
+        </h2>
+
+        <p class="pending">
+          Preparando teste...
+        </p>
+      </div>
+
+
+      <!-- ===============================================
+           ETAPA B
+      ================================================ -->
+
+      <div class="card">
+        <h2>
+          18.9B — Checkout Applyfy
+        </h2>
+
+        <p class="muted">
+          Cole abaixo a URL real do checkout Applyfy que você utiliza.
+        </p>
+
+
+        <input
+          id="checkoutInput"
+          type="url"
+          placeholder="https://checkout.applyfy.com.br/..."
+          autocomplete="off"
+        />
+
+
+        <button
+          id="openCheckoutButton"
+          type="button"
+          disabled
+        >
+          Abrir checkout controlado
+        </button>
+
+
+        <button
+          id="verifyButton"
+          type="button"
+          class="secondary"
+          disabled
+        >
+          Verificar pedido
+        </button>
+
+
+        <div class="notice">
+          Nesta etapa não é necessário efetuar pagamento. Avance no checkout apenas até a Applyfy criar o pedido — por exemplo, até gerar um PIX. Isso pode criar um pedido real pendente dentro da Applyfy.
+        </div>
+
+
+        <div
+          id="checkoutStatus"
+          style="margin-top: 18px"
+        >
+          <p class="muted">
+            Aguardando o teste 18.9A.
+          </p>
+        </div>
+      </div>
+    </main>
+
+
+    <script>
+      ;(function () {
+        const params =
+          new URLSearchParams(
+            window.location.search
+          )
+
+
+        const sourceKey =
+          params.get(
+            'source_key'
+          )
+
+
+        const trackingCard =
+          document.getElementById(
+            'trackingCard'
+          )
+
+
+        const checkoutInput =
+          document.getElementById(
+            'checkoutInput'
+          )
+
+
+        const openCheckoutButton =
+          document.getElementById(
+            'openCheckoutButton'
+          )
+
+
+        const verifyButton =
+          document.getElementById(
+            'verifyButton'
+          )
+
+
+        const checkoutStatus =
+          document.getElementById(
+            'checkoutStatus'
+          )
+
+
+        let attributionToken =
+          null
+
+
+        let pollingInterval =
+          null
+
+
+        function escapeHtml(
+          value
+        ) {
+          return String(
+            value ?? ''
+          )
+            .replaceAll(
+              '&',
+              '&amp;'
+            )
+            .replaceAll(
+              '<',
+              '&lt;'
+            )
+            .replaceAll(
+              '>',
+              '&gt;'
+            )
+            .replaceAll(
+              '"',
+              '&quot;'
+            )
+            .replaceAll(
+              "'",
+              '&#039;'
+            )
+        }
+
+
+        function row(
+          label,
+          value,
+          status
+        ) {
+          let statusClass =
+            ''
+
+
+          if (
+            status === true
+          ) {
+            statusClass =
+              'check'
+          }
+
+
+          if (
+            status === false
+          ) {
+            statusClass =
+              'fail'
+          }
+
+
+          return `
+            <div class="row">
+              <span class="label">
+                ${escapeHtml(
+                  label
+                )}
+              </span>
+
+              <span class="value ${statusClass}">
+                ${escapeHtml(
+                  value
+                )}
+              </span>
+            </div>
+          `
+        }
+
+
+        function isApplyfyCheckout(
+          value
+        ) {
+          try {
+            const url =
+              new URL(value)
+
+
+            const hostname =
+              url.hostname
+                .toLowerCase()
+
+
+            return (
+              hostname ===
+                'checkout.applyfy.com.br' ||
+              hostname.endsWith(
+                '.applyfy.com.br'
+              )
+            )
+          } catch {
+            return false
+          }
+        }
+
+
+        function updateCheckoutButton() {
+          openCheckoutButton.disabled =
+            !attributionToken ||
+            !isApplyfyCheckout(
+              checkoutInput.value
+            )
+        }
+
+
+        checkoutInput.addEventListener(
+          'input',
+          updateCheckoutButton
+        )
+
+
+        async function verifyOrder() {
+          if (
+            !attributionToken
+          ) {
+            return
+          }
+
+
+          verifyButton.disabled =
+            true
+
+
+          try {
+            const response =
+              await fetch(
+                `/api/tracking/e2e-verify?token=${encodeURIComponent(
+                  attributionToken
+                )}`,
+                {
+                  cache:
+                    'no-store',
+                }
+              )
+
+
+            const contentType =
+              response.headers.get(
+                'content-type'
+              ) ?? ''
+
+
+            if (
+              !contentType.includes(
+                'application/json'
+              )
+            ) {
+              throw new Error(
+                `Resposta inválida da API (${response.status}).`
+              )
+            }
+
+
+            const result =
+              await response.json()
+
+
+            if (
+              !response.ok ||
+              !result.ok
+            ) {
+              throw new Error(
+                result.error ??
+                  'Erro ao verificar pedido.'
+              )
+            }
+
+
+            /*
+             * Ainda não chegou webhook.
+             */
+
+            if (
+              !result.order
+            ) {
+              checkoutStatus.innerHTML =
+                `
+                  <p class="pending">
+                    Aguardando pedido da Applyfy...
+                  </p>
+
+                  ${row(
+                    'Attribution Token',
+                    attributionToken,
+                    true
+                  )}
+
+                  ${row(
+                    'Pedido recebido',
+                    'Ainda não',
+                    null
+                  )}
+                `
+
+              return
+            }
+
+
+            const checks =
+              result.checks
+
+
+            const order =
+              result.order
+
+
+            checkoutStatus.innerHTML =
+              `
+                <p class="${
+                  result
+                    .attributionPassed
+                    ? 'check'
+                    : 'fail'
+                }">
+                  ${
+                    result
+                      .attributionPassed
+                      ? 'ATRIBUIÇÃO DO PEDIDO APROVADA'
+                      : 'PEDIDO RECEBIDO — ATRIBUIÇÃO INCOMPLETA'
+                  }
+                </p>
+
+                ${row(
+                  'Pedido recebido',
+                  'Sim',
+                  checks
+                    .orderReceived
+                )}
+
+                ${row(
+                  'Provider',
+                  order.provider
+                )}
+
+                ${row(
+                  'Status do pedido',
+                  order
+                    .order_status
+                )}
+
+                ${row(
+                  'Método de atribuição',
+                  order
+                    .attribution_method ??
+                    '—'
+                )}
+
+                ${row(
+                  'Sessão atribuída',
+                  checks
+                    .sessionAttributed
+                    ? 'Resolvida'
+                    : 'Não resolvida',
+                  checks
+                    .sessionAttributed
+                )}
+
+                ${row(
+                  'Campanha',
+                  order
+                    .campaign_name ??
+                    'Não resolvida',
+                  checks
+                    .campaignResolved
+                )}
+
+                ${row(
+                  'Conjunto',
+                  order
+                    .ad_set_name ??
+                    'Não resolvido',
+                  checks
+                    .adSetResolved
+                )}
+
+                ${row(
+                  'Anúncio',
+                  order
+                    .ad_name ??
+                    'Não resolvido',
+                  checks
+                    .adResolved
+                )}
+
+                ${row(
+                  'Attribution Token',
+                  order
+                    .attribution_token ??
+                    'Ausente',
+                  order
+                    .attribution_token ===
+                    attributionToken
+                )}
+
+                ${row(
+                  'Venda paga',
+                  checks.paid
+                    ? 'Sim'
+                    : 'Ainda não',
+                  checks.paid
+                    ? true
+                    : null
+                )}
+              `
+
+
+            /*
+             * Se chegou até uma venda paga,
+             * podemos parar o polling.
+             *
+             * Caso esteja pendente,
+             * continuamos porque o status
+             * pode mudar depois.
+             */
+
+            if (
+              checks.paid &&
+              pollingInterval
+            ) {
+              window.clearInterval(
+                pollingInterval
+              )
+
+              pollingInterval =
+                null
+            }
+          } catch (
+            error
+          ) {
+            checkoutStatus.innerHTML =
+              `<p class="fail">${escapeHtml(
+                error instanceof
+                  Error
+                  ? error.message
+                  : 'Erro inesperado.'
+              )}</p>`
+          } finally {
+            verifyButton.disabled =
+              false
+          }
+        }
+
+
+        verifyButton.addEventListener(
+          'click',
+          function () {
+            void verifyOrder()
+          }
+        )
+
+
+        openCheckoutButton.addEventListener(
+          'click',
+          async function () {
+            const checkoutUrl =
+              checkoutInput.value
+                .trim()
+
+
+            if (
+              !isApplyfyCheckout(
+                checkoutUrl
+              )
+            ) {
+              checkoutStatus.innerHTML =
+                '<p class="fail">Informe uma URL válida da Applyfy.</p>'
+
+              return
+            }
+
+
+            /*
+             * Abre a aba imediatamente
+             * para evitar bloqueio de popup
+             * enquanto aguardamos promises.
+             */
+
+            const checkoutWindow =
+              window.open(
+                'about:blank',
+                '_blank'
+              )
+
+
+            openCheckoutButton.disabled =
+              true
+
+
+            try {
+              const decoratedUrl =
+                await window
+                  .TrafficFlow
+                  .decorateCheckoutUrlAsync(
+                    checkoutUrl
+                  )
+
+
+              const decorated =
+                new URL(
+                  decoratedUrl
+                )
+
+
+              const checkoutToken =
+                decorated
+                  .searchParams
+                  .get(
+                    'utm_term'
+                  )
+
+
+              if (
+                checkoutToken !==
+                  attributionToken
+              ) {
+                throw new Error(
+                  'O token não foi inserido corretamente no checkout.'
+                )
+              }
+
+
+              /*
+               * Registra também o evento
+               * initiate_checkout.
+               */
+
+              void window
+                .TrafficFlow
+                .track(
+                  'initiate_checkout',
+                  {
+                    diagnostic:
+                      true,
+
+                    test:
+                      '18.9B',
+
+                    checkoutProvider:
+                      'applyfy',
+
+                    checkoutUrl:
+                      decoratedUrl,
+
+                    attributionToken,
+                  }
+                )
+
+
+              checkoutStatus.innerHTML =
+                `
+                  <p class="pending">
+                    Checkout aberto. Aguardando webhook...
+                  </p>
+
+                  ${row(
+                    'Attribution Token',
+                    attributionToken,
+                    true
+                  )}
+
+                  ${row(
+                    'Token no checkout',
+                    checkoutToken,
+                    checkoutToken ===
+                      attributionToken
+                  )}
+                `
+
+
+              if (
+                checkoutWindow
+              ) {
+                checkoutWindow
+                  .location
+                  .href =
+                  decoratedUrl
+              } else {
+                window.open(
+                  decoratedUrl,
+                  '_blank'
+                )
+              }
+
+
+              verifyButton.disabled =
+                false
+
+
+              /*
+               * Polling a cada 5 segundos.
+               */
+
+              if (
+                pollingInterval
+              ) {
+                window.clearInterval(
+                  pollingInterval
+                )
+              }
+
+
+              pollingInterval =
+                window.setInterval(
+                  function () {
+                    void verifyOrder()
+                  },
+                  5000
+                )
+
+
+              /*
+               * Primeira verificação
+               * depois de 2 segundos.
+               */
+
+              window.setTimeout(
+                function () {
+                  void verifyOrder()
+                },
+                2000
+              )
+            } catch (
+              error
+            ) {
+              if (
+                checkoutWindow
+              ) {
+                checkoutWindow.close()
+              }
+
+
+              checkoutStatus.innerHTML =
+                `<p class="fail">${escapeHtml(
+                  error instanceof
+                    Error
+                    ? error.message
+                    : 'Erro inesperado.'
+                )}</p>`
+            } finally {
+              updateCheckoutButton()
+            }
+          }
+        )
+
+
+        if (!sourceKey) {
+          trackingCard.innerHTML =
+            '<p class="fail">source_key ausente.</p>'
+
+          return
+        }
+
+
+        /*
+         * =================================================
+         * CARREGAR TRAFFIC FLOW
+         * =================================================
+         */
+
+        const trafficScript =
+          document.createElement(
+            'script'
+          )
+
+
+        trafficScript.src =
+          '/traffic-flow.js'
+
+
+        trafficScript.setAttribute(
+          'data-source-key',
+          sourceKey
+        )
+
+
+        trafficScript.onload =
+          async function () {
+            try {
+              await new Promise(
+                function (
+                  resolve
+                ) {
+                  window.setTimeout(
+                    resolve,
+                    600
+                  )
+                }
+              )
+
+
+              if (
+                !window.TrafficFlow
+              ) {
+                throw new Error(
+                  'TrafficFlow não foi inicializado.'
+                )
+              }
+
+
+              /*
+               * TOKEN
+               */
+
+              attributionToken =
+                await window
+                  .TrafficFlow
+                  .getAttributionToken()
+
+
+              /*
+               * EVENTO DE DIAGNÓSTICO
+               */
+
+              const response =
+                await window
+                  .TrafficFlow
+                  .track(
+                    'lead',
+                    {
+                      diagnostic:
+                        true,
+
+                      test:
+                        '18.9A',
+                    }
+                  )
+
+
+              const result =
+                response
+                  ? await response
+                      .json()
+                  : null
+
+
+              /*
+               * CHECKOUT FICTÍCIO
+               * somente para validar
+               * decoração.
+               */
+
+              const diagnosticCheckout =
+                await window
+                  .TrafficFlow
+                  .decorateCheckoutUrlAsync(
+                    'https://checkout.applyfy.com.br/traffic-flow-e2e-diagnostic'
+                  )
+
+
+              const diagnosticUrl =
+                new URL(
+                  diagnosticCheckout
+                )
+
+
+              const checkoutToken =
+                diagnosticUrl
+                  .searchParams
+                  .get(
+                    'utm_term'
+                  )
+
+
+              const attribution =
+                window
+                  .TrafficFlow
+                  .getAttribution()
+
+
+              const campaignResolved =
+                Boolean(
+                  result
+                    ?.traffic
+                    ?.meta
+                    ?.campaignId
+                )
+
+
+              const adSetResolved =
+                Boolean(
+                  result
+                    ?.traffic
+                    ?.meta
+                    ?.adSetId
+                )
+
+
+              const adResolved =
+                Boolean(
+                  result
+                    ?.traffic
+                    ?.meta
+                    ?.adId
+                )
+
+
+              const tokenOk =
+                typeof attributionToken ===
+                  'string' &&
+                attributionToken
+                  .startsWith(
+                    'tf_'
+                  )
+
+
+              const checkoutTokenOk =
+                tokenOk &&
+                checkoutToken ===
+                  attributionToken
+
+
+              const allPassed =
+                Boolean(
+                  result?.ok
+                ) &&
+                campaignResolved &&
+                adSetResolved &&
+                adResolved &&
+                tokenOk &&
+                checkoutTokenOk
+
+
+              trackingCard.innerHTML =
+                `
+                  <h2>
+                    18.9A — Tracking e Meta
+                  </h2>
+
+                  <p class="${
+                    allPassed
+                      ? 'check'
+                      : 'fail'
+                  }">
+                    ${
+                      allPassed
+                        ? 'TESTE APROVADO'
+                        : 'TESTE INCOMPLETO'
+                    }
+                  </p>
+
+                  ${row(
+                    'API /api/track',
+                    result?.ok
+                      ? 'OK'
+                      : 'Falhou',
+                    Boolean(
+                      result?.ok
+                    )
+                  )}
+
+                  ${row(
+                    'Campaign',
+                    campaignResolved
+                      ? 'Resolvida'
+                      : 'Não resolvida',
+                    campaignResolved
+                  )}
+
+                  ${row(
+                    'Ad Set',
+                    adSetResolved
+                      ? 'Resolvido'
+                      : 'Não resolvido',
+                    adSetResolved
+                  )}
+
+                  ${row(
+                    'Ad',
+                    adResolved
+                      ? 'Resolvido'
+                      : 'Não resolvido',
+                    adResolved
+                  )}
+
+                  ${row(
+                    'Attribution Token',
+                    attributionToken ||
+                      'Ausente',
+                    tokenOk
+                  )}
+
+                  ${row(
+                    'Token no checkout',
+                    checkoutToken ||
+                      'Ausente',
+                    checkoutTokenOk
+                  )}
+
+                  ${row(
+                    'Session ID',
+                    window
+                      .TrafficFlow
+                      .getSessionId()
+                  )}
+
+                  ${row(
+                    'Visitor ID',
+                    window
+                      .TrafficFlow
+                      .getVisitorId()
+                  )}
+
+                  ${row(
+                    'Meta Campaign External ID',
+                    attribution
+                      ?.metaCampaignId ||
+                      '—'
+                  )}
+
+                  ${row(
+                    'Meta Ad Set External ID',
+                    attribution
+                      ?.metaAdSetId ||
+                      '—'
+                  )}
+
+                  ${row(
+                    'Meta Ad External ID',
+                    attribution
+                      ?.metaAdId ||
+                      '—'
+                  )}
+                `
+
+
+              /*
+               * Só liberamos a etapa B
+               * se a A passou.
+               */
+
+              if (
+                allPassed
+              ) {
+                updateCheckoutButton()
+
+                checkoutStatus.innerHTML =
+                  `
+                    <p class="check">
+                      Tracking pronto.
+                    </p>
+
+                    <p class="muted">
+                      Cole agora um checkout real da Applyfy.
+                    </p>
+                  `
+              } else {
+                checkoutStatus.innerHTML =
+                  '<p class="fail">A etapa 18.9A precisa ser aprovada antes do checkout.</p>'
+              }
+            } catch (
+              error
+            ) {
+              console.error(
+                error
+              )
+
+
+              trackingCard.innerHTML =
+                `<p class="fail">${escapeHtml(
+                  error instanceof
+                    Error
+                    ? error.message
+                    : 'Erro inesperado.'
+                )}</p>`
+            }
+          }
+
+
+        trafficScript.onerror =
+          function () {
+            trackingCard.innerHTML =
+              '<p class="fail">Não foi possível carregar traffic-flow.js.</p>'
+          }
+
+
+        document.head.appendChild(
+          trafficScript
+        )
+      })()
+    </script>
+  </body>
+</html>
