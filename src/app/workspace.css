@@ -1512,3 +1512,50 @@
     scroll-behavior: auto !important;
   }
 }
+.tf-notice-toast {
+  position: fixed;
+  top: 88px;
+  right: 28px;
+  z-index: 55;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(390px, calc(100vw - 30px));
+  padding: 20px;
+  background: var(--tf-card);
+  border: 1px solid var(--tf-green);
+  border-radius: 14px;
+  box-shadow: 0 16px 60px #0004;
+}
+.tf-notice-toast > svg {
+  color: var(--tf-green);
+  flex-shrink: 0;
+}
+.tf-notice-toast strong {
+  font-size: 13px;
+}
+.tf-notice-toast p {
+  font-size: 11px;
+  margin: 8px 0;
+}
+.tf-notice-toast a {
+  font-size: 10px;
+  color: var(--tf-green);
+}
+.tf-notice-toast button {
+  padding: 4px !important;
+  margin-left: auto;
+  background: none !important;
+  border: 0 !important;
+}
+@media (max-width: 700px) {
+  .tf-notice-toast {
+    top: auto;
+    bottom: 18px;
+    right: 15px;
+  }
+}
+
+.tf-loss > strong {
+  color: var(--tf-red);
+}

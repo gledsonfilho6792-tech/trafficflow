@@ -294,6 +294,8 @@ export async function POST(request: NextRequest) {
         offer_code: String(input.offer_code || ""),
         configured: true,
       };
+      if (type === "checkout" && !strings(input.product_ids).length)
+        throw Error("Informe ao menos um ID de produto para esta oferta.");
       const secret = String(input.webhookToken || "").trim();
       if (type === "checkout" && !secret && !config.webhook_token_sha256)
         throw new Error("Informe o token de validação do webhook.");

@@ -1,5 +1,6 @@
 "use client";
 import { OrderDetails } from "./order-details";
+import { NoticeToast } from "./notice-toast";
 import Link from "next/link";
 import {
   useCallback,
@@ -420,7 +421,7 @@ export default function WorkspaceClient({
           const I = Icon as typeof Wallet;
           return (
             <button
-              className={`tf-metric ${key === "roi" || key === "profit" ? "tf-positive" : ""}`}
+              className={`tf-metric ${key === "roi" || key === "profit" ? (summary.profit < 0 ? "tf-loss" : "tf-positive") : ""}`}
               key={String(key)}
               onClick={() =>
                 openMetric(String(key), String(label), String(value))
@@ -1233,7 +1234,12 @@ export default function WorkspaceClient({
       </Section>
     );
   else if (mode === "reports")
-    body = <Reports data={data} group={group} setGroup={setGroup} />;
+    body = (
+      <>
+        {kpis()}
+        <Reports data={data} group={group} setGroup={setGroup} />
+      </>
+    );
   else if (mode === "utms") body = <Utms data={data} onInfo={openInfo} />;
   else if (mode === "settings")
     body = <OfferSettings data={data} mutate={mutate} saving={saving} />;
@@ -1338,6 +1344,7 @@ export default function WorkspaceClient({
           {notice}
         </p>
       )}
+      <NoticeToast data={data} />
       {warnings.map((w) => (
         <p className="tf-banner" key={w}>
           {w}

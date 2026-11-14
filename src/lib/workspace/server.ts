@@ -2,7 +2,13 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dateWindow } from "./analytics";
-import { object, type Row, type WorkspaceData, type Project } from "./types";
+import {
+  object,
+  strings,
+  type Row,
+  type WorkspaceData,
+  type Project,
+} from "./types";
 export async function authorize(projectId: string) {
   if (!/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(projectId))
     throw new Error("400:Dashboard inválida.");
@@ -183,7 +189,7 @@ async function readWorkspace(
     if (!Array.isArray(r) && r.error) throw new Error(r.error.message);
   const [pr, settings, prefs, ...tables] = results;
   const data = tables as Row[][];
-  const integrations = data[9].map((i) => ({
+  const integrations:Row[] = data[9].map((i) => ({
     ...i,
     config: Object.fromEntries(
       Object.entries(object(i.config)).filter(([k]) =>
@@ -232,6 +238,15 @@ async function readWorkspace(
     apiKeys: data[15],
     deliveries: data[16],
     period: { start, end },
-    warnings: [],
+    warnings: integrations.some(
+      (i) =>
+        i.integration_type === "checkout" &&
+        ["applyfy", "hotmart", "cakto"].includes(String(i.provider)) &&
+        !strings(object(i.config).product_ids).length,
+    )
+      ? [
+          "Configure os IDs dos produtos em Integrações → Webhooks. O recebimento fica bloqueado até vincular os produtos à oferta correta.",
+        ]
+      : [],
   };
 }

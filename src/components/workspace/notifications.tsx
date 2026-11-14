@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { ShoppingBag, FileChartColumn } from "lucide-react";
 import { Section, Field, SimpleTable, type Mutate } from "./primitives";
 import { object, text as s, type WorkspaceData } from "@/lib/workspace/types";
@@ -42,7 +42,6 @@ export function NotificationSettings({
     })),
     [tab, setTab] = useState("Personalização"),
     [message, setMessage] = useState("");
-  const lastNotice = useRef<string | null>(null);
   const summary = aggregate(data);
   const saleText = [
     prefs.product ? s(data.settings, "product_name", data.project.name) : "",
@@ -62,29 +61,6 @@ export function NotificationSettings({
       : prefs.style === "profit"
         ? `Lucro: ${brl(summary.profit)}`
         : `Sua operação já gerou ${brl(summary.profit)} de lucro neste período.`;
-  useEffect(() => {
-    const latest = data.notifications[0];
-    if (
-      latest &&
-      lastNotice.current &&
-      lastNotice.current !== latest.id &&
-      prefs.sound
-    ) {
-      try {
-        const audio = new AudioContext();
-        const oscillator = audio.createOscillator(),
-          gain = audio.createGain();
-        oscillator.connect(gain);
-        gain.connect(audio.destination);
-        oscillator.frequency.value = 880;
-        gain.gain.value = 0.035;
-        oscillator.start();
-        oscillator.stop(audio.currentTime + 0.15);
-        oscillator.onended = () => void audio.close();
-      } catch {}
-    }
-    lastNotice.current = latest?.id || null;
-  }, [data.notifications, prefs.sound]);
   const toggle = (key: keyof Preferences, label: string) => (
     <label className="tf-toggle-row">
       <span>{label}</span>

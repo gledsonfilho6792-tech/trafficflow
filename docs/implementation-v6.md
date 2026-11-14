@@ -11,7 +11,7 @@ Atualizado em 14/11/2026. Base oficial preservada: Supabase `ipgcstfddlflzrrotbt
 - Vendas rastreadas, origem a confirmar e não rastreadas, detalhes dos itens e histórico do pagamento. Não rastreada não é sinônimo de orgânica.
 - Financeiro operacional separado do caixa, lançamentos, compromissos, baixa idempotente e estorno.
 - Relatórios por dia, checkout e origem, exportação CSV; UTMs e gerador de links.
-- Regras avaliadas no servidor e notificações deduplicadas. Preferências de venda, valores/visibilidade, som na aba de notificações, horários e estilo dos resumos.
+- Regras avaliadas no servidor e notificações deduplicadas. Preferências de venda, valores/visibilidade, toast global nas telas da oferta e som de venda, horários e estilo dos resumos.
 - Integrações agrupadas em Anúncios, Webhooks, Pixel, UTMs, API e Testes.
 - Meta OAuth e sincronização de todas as contas ativas. Hotmart com Hottok e credenciais OAuth opcionais no Vault. Cakto V1/V2, secret/HMAC, produtos, localização, taxas e ciclo de pedidos. Applyfy preservada.
 - Pixel/CAPI: configuração no Vault, fila de Purchase com event_id estável, claim atômico, limite de retentativas e histórico. Teste de acesso à API separado da confirmação de uma conversão.
@@ -36,7 +36,7 @@ A aplicação foi feita no SQL Editor porque o conector autenticado não acessa 
 ## Limites explícitos
 
 - Kiwify, Kirvano e demais provedores do catálogo ainda não têm adapters homologados. A tela identifica essa condição e bloqueia sua ativação. Não são integrações operacionais por terem um ícone.
-- Nenhuma credencial real de Hotmart/Cakto/Pixel foi fornecida nesta etapa. Os testes com fixtures comprovam o processamento interno; a homologação real exige configurar cada conta e receber evento do provedor. Nenhuma compra foi realizada.
+- Nenhuma credencial real de Hotmart/Cakto/Pixel foi fornecida nesta etapa. Os testes com fixtures comprovam o processamento interno; a homologação real exige configurar cada conta e receber evento do provedor. Nenhuma compra foi realizada. O webhook legado Applyfy está sem filtro de produto: seu recebimento será bloqueado até o operador vincular os IDs da oferta correta; pergunta enviada ao usuário, sem alterar o checkout externo.
 - CAPI tem backend e fila, mas ainda não há confirmação real de entrega à Meta neste projeto. Configuração não recebe status de evento entregue antes da resposta da Meta.
 - O script existente observa Page View e clique para checkout. Clique não comprova abertura do checkout: IC fica indisponível até instrumentação real de `checkout_started`.
 - Bump/upsell/downsell só são classificados quando o checkout informa; não há denominadores de exposição para inventar aceitação.
@@ -46,4 +46,4 @@ A aplicação foi feita no SQL Editor porque o conector autenticado não acessa 
 
 ## Publicação
 
-Em preparação. Validar build Vercel e smoke tests antes da promoção para o domínio principal. Atualizar esta seção com commit, deployment e resultado observado.
+Primeiro build de produção preparado sem domínio: commit `d89fc1a`, deployment `dpl_4FtSBjYd2MG41M2NKvCupiCUPABW`, estado READY. API autenticada do deployment retornou HTTP200 e dados corretos da dashboard QA (duas contas). Sincronização hot real no ambiente local retornou HTTP200/ok, uma conta processada, sem erros. Ajustes finais de diagnóstico/notificações em validação para a publicação definitiva.

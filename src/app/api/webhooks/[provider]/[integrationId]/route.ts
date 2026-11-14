@@ -96,6 +96,15 @@ export async function POST(
         { ok: false, error: "Webhook não autorizado." },
         { status: 401 },
       );
+    if (!strings(config.product_ids).length)
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Configure os produtos desta oferta na integração antes de receber vendas.",
+        },
+        { status: 409 },
+      );
     const envelopes =
       provider === "cakto" && Array.isArray(payload.data)
         ? payload.data.map((data) => ({ ...payload, data: object(data) }))
