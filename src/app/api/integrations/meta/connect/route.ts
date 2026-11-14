@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const {data:existing,error:readError}=await supabase.from('integrations').select('id').eq('project_id',projectId).eq('provider','meta').eq('integration_type','ads').maybeSingle()
+    if(readError)throw new Error(readError.message)
+    if(!existing){const {error}=await supabase.from('integrations').insert({project_id:projectId,provider:'meta',integration_type:'ads',name:'Meta Ads',status:'disconnected'});if(error)throw new Error(error.message)}
+
     const appId = process.env.META_APP_ID
     const redirectUri = process.env.META_REDIRECT_URI
     const configId = process.env.META_LOGIN_CONFIG_ID

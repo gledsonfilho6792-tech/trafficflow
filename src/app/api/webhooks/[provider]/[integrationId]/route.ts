@@ -1,425 +1,242 @@
-import {
-  createHash,
-} from 'crypto'
-
-import {
-  NextRequest,
-  NextResponse,
-} from 'next/server'
-
-import {
-  createAdminClient,
-} from '@/lib/supabase/admin'
-
-import {
-  isWebhookProvider,
-  type WebhookPayload,
-} from '@/lib/webhooks/types'
-
-import {
-  normalizeWebhookMetadata,
-} from '@/lib/webhooks/normalize'
-
-import {
-  processWebhookEvent,
-} from '@/lib/webhooks/process'
-
-export const dynamic =
-  'force-dynamic'
-
-type RouteContext = {
-  params: Promise<{
-    provider: string
-    integrationId: string
-  }>
-}
-
-function createDedupeKey(
-  provider: string,
-  integrationId: string,
-  rawBody: string
-) {
-  return createHash('sha256')
-    .update(
-      `${provider}:${integrationId}:${rawBody}`
-    )
-    .digest('hex')
-}
-
+import { createHash } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { authenticateWebhook } from "@/lib/webhooks/authenticate";
+import { normalizeProviderOrder } from "@/lib/webhooks/provider-orders";
+import { normalizeWebhookMetadata } from "@/lib/webhooks/normalize";
+import { processWebhookEvent } from "@/lib/webhooks/process";
+import { redactWebhookSecrets } from "@/lib/webhooks/redact";
+import { isWebhookProvider, type WebhookPayload } from "@/lib/webhooks/types";
+import { createSaleNotice, queueConversions } from "@/lib/workspace/automation";
+import { object, strings } from "@/lib/workspace/types";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 export async function POST(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: Promise<{ provider: string; integrationId: string }> },
 ) {
   try {
-    const {
-      provider: rawProvider,
-      integrationId,
-    } = await context.params
-
-    const provider =
-      rawProvider.toLowerCase()
-
-    /*
-     * Impede providers desconhecidos.
-     */
+    const { provider: rawProvider, integrationId } = await params,
+      provider = rawProvider.toLowerCase();
     if (
-      !isWebhookProvider(provider)
-    ) {
+      !isWebhookProvider(provider) ||
+      !/^\w{8}(-\w{4}){3}-\w{12}$/.test(integrationId)
+    )
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Provider não suportado.',
-        },
-        {
-          status: 404,
-        }
-      )
-    }
-
-    /*
-     * Proteção básica contra payloads
-     * absurdamente grandes.
-     */
-    const contentLength =
-      Number(
-        request.headers.get(
-          'content-length'
-        ) ?? 0
-      )
-
-    if (
-      contentLength >
-      1_000_000
-    ) {
+        { ok: false, error: "Integração não encontrada." },
+        { status: 404 },
+      );
+    if (Number(request.headers.get("content-length") || 0) > 1_000_000)
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Payload muito grande.',
-        },
-        {
-          status: 413,
-        }
-      )
-    }
-
-    const rawBody =
-      await request.text()
-
-    if (!rawBody) {
+        { ok: false, error: "Payload muito grande." },
+        { status: 413 },
+      );
+    const raw = await request.text();
+    if (Buffer.byteLength(raw) > 1_000_000)
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Payload vazio.',
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    let payload:
-      WebhookPayload
-
+        { ok: false, error: "Payload muito grande." },
+        { status: 413 },
+      );
+    let payload: WebhookPayload;
     try {
-      const parsed =
-        JSON.parse(rawBody)
-
-      if (
-        !parsed ||
-        typeof parsed !==
-          'object' ||
-        Array.isArray(parsed)
-      ) {
-        throw new Error(
-          'JSON deve ser um objeto.'
-        )
-      }
-
-      payload =
-        parsed as WebhookPayload
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        throw Error();
+      payload = parsed;
     } catch {
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Payload JSON inválido.',
-        },
-        {
-          status: 400,
-        }
-      )
+        { ok: false, error: "Payload JSON inválido." },
+        { status: 400 },
+      );
     }
-
-    const admin =
-      createAdminClient()
-
-    /*
-     * A própria URL traz o integrationId,
-     * mas ainda confirmamos no banco que
-     * aquela integração realmente pertence
-     * ao provider informado.
-     */
-    const {
-      data: integration,
-      error:
-        integrationError,
-    } = await admin
-      .from('integrations')
-      .select(
-  `
-  id,
-  project_id,
-  provider,
-  integration_type,
-  status,
-  config
-  `
-)
-      .eq(
-        'id',
-        integrationId
-      )
-      .eq(
-        'provider',
-        provider
-      )
-      .maybeSingle()
-
-    if (
-      integrationError ||
-      !integration
-    ) {
+    const admin = createAdminClient();
+    const { data: integration, error } = await admin
+      .from("integrations")
+      .select("id,project_id,provider,integration_type,status,config")
+      .eq("id", integrationId)
+      .eq("provider", provider)
+      .maybeSingle();
+    if (error || !integration)
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Integração não encontrada.',
-        },
-        {
-          status: 404,
-        }
-      )
+        { ok: false, error: "Integração não encontrada." },
+        { status: 404 },
+      );
+    if (
+      integration.integration_type !== "checkout" ||
+      integration.status === "disabled" ||
+      !["applyfy", "hotmart", "cakto"].includes(provider)
+    )
+      return NextResponse.json(
+        { ok: false, error: "Integração indisponível." },
+        { status: 403 },
+      );
+    const config = object(integration.config);
+    let signingSecret: string | null = null;
+    if (provider === "cakto" && request.headers.has("x-cakto-signature")) {
+      const { data: stored } = await admin.rpc("get_integration_secret", {
+        p_integration_id: integrationId,
+      });
+      try {
+        signingSecret = String(
+          object(JSON.parse(String(stored))).webhook_secret || "",
+        );
+      } catch {}
     }
-/*
- * Autenticação do webhook Applyfy.
- *
- * O token original nunca fica salvo.
- * Guardamos apenas seu SHA-256.
- */
-if (provider === 'applyfy') {
-  const config =
-    integration.config &&
-    typeof integration.config === 'object' &&
-    !Array.isArray(integration.config)
-      ? (
-          integration.config as Record<
-            string,
-            unknown
-          >
-        )
-      : {}
-
-  const expectedTokenHash =
-    typeof config.webhook_token_sha256 ===
-      'string'
-      ? config.webhook_token_sha256
-      : null
-
-  const receivedToken =
-    typeof payload.token === 'string'
-      ? payload.token
-      : null
-
-  if (
-    !expectedTokenHash ||
-    !receivedToken
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          'Webhook não autorizado.',
-      },
-      {
-        status: 401,
-      }
-    )
-  }
-
-  const receivedTokenHash =
-    createHash('sha256')
-      .update(receivedToken)
-      .digest('hex')
-
-  if (
-    receivedTokenHash !==
-    expectedTokenHash
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          'Webhook não autorizado.',
-      },
-      {
-        status: 401,
-      }
-    )
-  }
-}
-    const normalized =
-      normalizeWebhookMetadata(
+    if (
+      !authenticateWebhook(
         provider,
-        payload
-      )
-
-    const logicalEventKey =
-  normalized.eventType &&
-  normalized.externalEventId
-    ? [
-        provider,
-        integrationId,
-        normalized.eventType,
-        normalized.externalEventId,
-      ].join(':')
-    : rawBody
-
-const dedupeKey =
-  createDedupeKey(
-    provider,
-    integrationId,
-    logicalEventKey
-  )
-
-    const {
-      data: webhookEvent,
-      error: webhookError,
-    } = await admin
-      .from('webhook_events')
-      .insert({
-        project_id:
-          integration.project_id,
-
-        integration_id:
-          integration.id,
-
-        provider,
-
-        event_type:
-          normalized.eventType,
-
-        external_event_id:
-          normalized.externalEventId,
-
-        dedupe_key:
-          dedupeKey,
-
         payload,
-
-        status:
-          'received',
-
-        received_at:
-          new Date()
-            .toISOString(),
-      })
-      .select(
-        `
-        id,
-        received_at
-        `
+        request.headers,
+        raw,
+        String(config.webhook_token_sha256 || ""),
+        signingSecret,
       )
-      .single()
-
-    /*
-     * PostgreSQL 23505 =
-     * violação de UNIQUE.
-     *
-     * Nesse caso o webhook já entrou
-     * anteriormente. Respondemos 200
-     * para evitar reenvios infinitos.
-     */
-    if (
-      webhookError?.code ===
-      '23505'
-    ) {
-      return NextResponse.json({
-        ok: true,
-        duplicate: true,
-      })
-    }
-
-    if (webhookError) {
-      console.error(
-        'WEBHOOK SAVE ERROR:',
-        webhookError
-      )
-
+    )
+      return NextResponse.json(
+        { ok: false, error: "Webhook não autorizado." },
+        { status: 401 },
+      );
+    if (!strings(config.product_ids).length)
       return NextResponse.json(
         {
           ok: false,
           error:
-            'Erro ao armazenar webhook.',
+            "Configure os produtos desta oferta na integração antes de receber vendas.",
         },
-        {
-          status: 500,
+        { status: 409 },
+      );
+    const envelopes =
+      provider === "cakto" && Array.isArray(payload.data)
+        ? payload.data.map((data) => ({ ...payload, data: object(data) }))
+        : [payload];
+    if (envelopes.length > 100)
+      return NextResponse.json(
+        { ok: false, error: "Lote excede 100 pedidos." },
+        { status: 413 },
+      );
+    const results = [];
+    for (const envelope of envelopes) {
+      const normalizedOrder = normalizeProviderOrder(provider, envelope),
+        allowed = strings(config.product_ids);
+      if (
+        (normalizedOrder &&
+          allowed.length &&
+          !normalizedOrder.items.some(
+            (item) =>
+              !!item.externalProductId &&
+              allowed.includes(item.externalProductId),
+          )) ||
+        (normalizedOrder &&
+          config.offer_code &&
+          normalizedOrder.offerCode !== config.offer_code)
+      ) {
+        results.push({
+          ignored: true,
+          reason: "Produto ou oferta não vinculados a esta dashboard.",
+        });
+        continue;
+      }
+      const metadata = normalizeWebhookMetadata(provider, envelope);
+      const logicalKey =
+        metadata.eventType && metadata.externalEventId
+          ? [
+              provider,
+              integrationId,
+              metadata.eventType,
+              metadata.externalEventId,
+            ].join(":")
+          : JSON.stringify(envelope);
+      const dedupe = createHash("sha256")
+        .update(provider + ":" + integrationId + ":" + logicalKey)
+        .digest("hex");
+      const { data: inserted, error: insertError } = await admin
+        .from("webhook_events")
+        .insert({
+          project_id: integration.project_id,
+          integration_id: integrationId,
+          provider,
+          event_type: metadata.eventType,
+          external_event_id: metadata.externalEventId,
+          dedupe_key: dedupe,
+          payload: redactWebhookSecrets(envelope),
+          status: "received",
+          received_at: new Date().toISOString(),
+        })
+        .select("id,received_at")
+        .single();
+      let event = inserted;
+      if (insertError?.code === "23505") {
+        // Only the winner of this compare-and-swap retries a previously failed event.
+        const { data: retry, error: retryError } = await admin
+          .from("webhook_events")
+          .update({ status: "received", error_message: null })
+          .eq("dedupe_key", dedupe)
+          .eq("integration_id", integrationId)
+          .eq("status", "error")
+          .select("id,received_at")
+          .maybeSingle();
+        if (retryError) throw Error("Falha ao recuperar evento.");
+        if (!retry) {
+          results.push({ duplicate: true });
+          continue;
         }
-      )
+        event = retry;
+      } else if (insertError) throw Error("Erro ao armazenar webhook.");
+      if (!event) throw Error("Evento não encontrado.");
+      const processing = await processWebhookEvent({
+        webhookEventId: event.id,
+        projectId: integration.project_id,
+        integrationId,
+        provider,
+        payload: envelope,
+      });
+      if (processing.processed && processing.orderId) {
+        try {
+          await createSaleNotice(integration.project_id, processing.orderId);
+          await queueConversions(integration.project_id, processing.orderId);
+        } catch (e) {
+          console.error(
+            "Post-webhook workflow failed",
+            e instanceof Error ? e.message : "unknown",
+          );
+        }
+      }
+      results.push({
+        ...processing,
+        eventId: event.id,
+        receivedAt: event.received_at,
+      });
     }
-const processing =
-  await processWebhookEvent({
-    webhookEventId:
-      webhookEvent.id,
-
-    projectId:
-      integration.project_id,
-
-    integrationId:
-      integration.id,
-
-    provider,
-
-    payload,
-  })
+    if (results.some((r) => "processed" in r && r.processed))
+      await admin
+        .from("integrations")
+        .update({
+          status: "connected",
+          last_synced_at: new Date().toISOString(),
+        })
+        .eq("id", integrationId);
     return NextResponse.json({
-  ok: true,
-
-  provider,
-
-  received: true,
-
-  processed:
-    processing.processed,
-
-  eventId:
-    webhookEvent.id,
-
-  orderId:
-    processing.orderId,
-
-  receivedAt:
-    webhookEvent.received_at,
-})
-  } catch (error) {
+      ok: true,
+      provider,
+      received: true,
+      ...(results.length === 1
+        ? results[0]
+        : {
+            results,
+            processed: results.some((r) => "processed" in r && r.processed),
+          }),
+    });
+  } catch (e) {
     console.error(
-      'WEBHOOK ERROR:',
-      error
-    )
-
+      "Webhook processing failed",
+      e instanceof Error ? e.message : "unknown",
+    );
     return NextResponse.json(
       {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro inesperado.',
+        error: "Falha ao processar evento. Consulte o histórico de eventos.",
       },
-      {
-        status: 500,
-      }
-    )
+      { status: 500 },
+    );
   }
 }

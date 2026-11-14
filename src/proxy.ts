@@ -22,6 +22,7 @@ export async function proxy(
    */
   if (
   pathname === '/traffic-flow.js' ||
+  pathname.startsWith('/api/v1/') ||
   pathname.startsWith('/api/automation/') ||
   pathname.startsWith('/api/webhooks/') ||
   pathname.startsWith('/api/track')
