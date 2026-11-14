@@ -1,9 +1,9 @@
-.git
-.env*
-.next
-node_modules
+/.git
+/.env*
+/.next
+/node_modules
 *.tsbuildinfo
 next-env.d 2.ts
 .DS_Store
-docs
-supabase
+/docs
+/supabase
