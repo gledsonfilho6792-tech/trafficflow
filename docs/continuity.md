@@ -57,3 +57,20 @@ O usuário indicou a aba Applyfy e o produto **83 Receitas Naturais para seu cã
 - https://github.com/advisories/GHSA-673q-mjm6-r5xr
 
 As versões afetadas e corrigidas foram conferidas antes da atualização. Os dados de produção e os segredos não foram copiados para a documentação.
+
+## Estado confirmado ao finalizar a recuperação
+
+- GitHub recebeu os commits da recuperação e foi conectado ao projeto Vercel. Segredos ficaram fora do repositório; foi feita varredura dos caminhos publicados.
+- URL https://traffic-flow-blond.vercel.app recuperada, associada ao projeto e verificada. A associação acompanha futuros deploys de produção.
+- Build remoto com Next 16.4.6 e auditoria zero vulnerabilidades aprovado antes da promoção.
+- Em produção: `/login` 200, `/traffic-flow.js` 200 para visitante sem login, health do Supabase 200 e API de diagnóstico sem sessão 401.
+- E2E também aprovado no domínio de produção: sessão, eventos, token e entidades Meta resolvidos.
+- Sincronização completa Meta executada com sucesso: 11 campanhas, 11 conjuntos e 20 anúncios. Zero insights recebidos no dia consultado, sem inventar investimento.
+- Cron hot voltou a executar após a recuperação da URL, com sucessos às 05:07 e 05:08 UTC de 14/11/2026. Não foi criado agendamento duplicado.
+- Varredura de erros do deploy publicado nos primeiros 15 minutos retornou zero registros de erro.
+- O usuário confirmou: Pets deve ser usada **somente no teste controlado por enquanto**. Não criar operação real de Pets nem instalar script na PV a partir dessa indicação.
+- Webhook Applyfy existente confirmado no painel: destino do projeto Padel, filtro Todos os produtos. Configuração e token não foram alterados. Antes da operação real, separar os produtos por projeto.
+- Adicionada navegação para telas abaixo de `lg`, pois a sidebar ficava oculta sem alternativa. A tentativa de viewport virtual no Chrome não alterou a largura real; não registrar essa tentativa como prova de visualização em celular.
+- Dependências da pasta original reinstaladas com sucesso (zero vulnerabilidades). Caches anteriores preservados como `.node_modules-before-20261114` e `.next-before-20261114`, ambos ignorados no Git/deploy. Não publicar esses diretórios.
+
+A última validação comercial continua dependente de um pedido de teste recebido via Applyfy. Abrir checkout e transportar token não confirma o recebimento de um pedido ou uma aprovação de pagamento. Nenhuma compra foi feita nesta execução.

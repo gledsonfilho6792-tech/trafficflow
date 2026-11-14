@@ -2,6 +2,8 @@
 /.env*
 /.next
 /node_modules
+/.node_modules-before-*
+/.next-before-*
 *.tsbuildinfo
 next-env.d 2.ts
 .DS_Store

@@ -138,6 +138,7 @@ export default function ProjectShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={active ? 'page' : undefined}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                     active
                       ? 'bg-emerald-500/10 text-emerald-400'
@@ -198,6 +199,14 @@ export default function ProjectShell({
             </div>
           </div>
         </header>
+
+        <nav aria-label="Navegação do projeto" className="flex gap-2 overflow-x-auto border-b border-white/[0.06] px-4 py-3 lg:hidden">
+          <Link href="/projects" className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300">Projetos</Link>
+          {navigation.map(item => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+            return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-xs ${active ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-300'}`}>{item.label}</Link>
+          })}
+        </nav>
 
         {/* PÁGINAS */}
         <div className="min-h-[calc(100vh-80px)]">
